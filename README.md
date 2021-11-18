@@ -1,6 +1,6 @@
 # flashcards.sh
 
-A (POSIX compliant?) Shell script for learning flashcards
+A POSIX compliant (I think) Shell script for learning flashcards
 
 # Prerequisites
 Make the script executable: e.g. `chmod a+x flashcards.sh`. See example.txt for how the flashcards files are structured.
