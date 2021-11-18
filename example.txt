@@ -1,0 +1,4 @@
+mi = me, my = jag
+sina = you, your
+ona = them, it, they, she, he
+ijo = thing, object, something
