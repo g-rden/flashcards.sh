@@ -1,9 +1,9 @@
 #!/bin/sh
 #
 #	./flashcards.sh [OPTION]... [FILE]
-#		OPTIONS: (without spaces!!!)
+#		OPTIONS:
 #		mode: -m1 normal | -m2 show 2nd | ... | -m0 show all
-#		cards: -c[INTEGER] - how many cards to print
+#		cards: -c[INTEGER] - how many cards to show
 #		CONTROLS:
 #		next page with ENTER
 #		save and exit with q ENTER, exit with control-C
@@ -32,7 +32,7 @@ declarenew() {
 	if [ "$c" -gt 0 ] && [ "$c" -lt "$total" ]; then total="$c"; fi
 }
 
-tmpfile="/$(mktemp -u | awk -F'/' 'BEGIN{OFS=FS} {$NF=""; print}')/$file-tmp"
+tmpfile="$(mktemp -u | awk -F'/' 'BEGIN{OFS=FS} {$NF=""; print}')/$file-tmp"
 
 if [ -e "$tmpfile" ] && [ "$(awk 'NR<=2' "$tmpfile")" = "$(printf "%s$m\n%s$c")" ]; then
 	printf "%s$(awk 'NR==3' "$tmpfile")/$(awk 'NR==4' "$tmpfile")\ncontinue (y) or start a new one (n) "
