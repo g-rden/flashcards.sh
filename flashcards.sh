@@ -1,82 +1,115 @@
 #!/bin/sh
 #
-#	./flashcards.sh [OPTION]... [FILE]
-#		OPTIONS:
-#		mode: -m1 normal | -m2 show 2nd | ... | -m0 show all (training)
-#		cards: -c[INTEGER] - how many cards to print
-#		typing: -t - enable typing the words (normal mode)
-#		permanent savefiles: -p - saves in current directory
-#		CONTROLS:
-#		next page with ENTER
-#		save and exit with q ENTER, exit with control-C
+# flashcards.sh
+# a POSIX complient and almost fully POSIX shell flashcards learning script
+#
 
-showhelp() { awk 'NR>=3 && NR<=11' "$0"; exit; }
+# USAGE:
+#    [OPTIONS]... ./flashcards.sh [FILE]
+# OPTIONS:
+#    modes: m=[n] - show nth page of cards
+#    typing: t=[n] - enable typing check for nth page
+#    cards: c=[n] - how many cards to print
+#    permanent savefiles: p=[n] - 1 for saving in current directory
+# CONTROLS:
+#    next page with ENTER
+#    save and exit with q ENTER, exit with control-C
+# INPUT FILE REQUIREMENTS:
+#    last line is an empty new line
+#    no other empty or unused lines
 
-if [ -z "$1" ]; then showhelp; fi
+# supress errors
+exec 2>/dev/null
 
-m="1"; c="0"; t="0"; p="0"
+# show help
+! (: "${1:?}" ) && n=1 && while [ "$n" -le 19 ]; do read -r l
+	[ "$n" -ge 7 ] && a="$a\n$l"; n=$((n+1)); done < "$0" && printf '%s'"$a\n" && exit
 
-for arg in "$@"; do
-	case "$arg" in
-		-h | --help) showhelp;;
-		-m*)         m="$(echo "$arg" | awk '{print substr($1, 3)}')";; #mode
-		-c*)         c="$(echo "$arg" | awk '{print substr($1, 3)}')";; #cards
-		-t)          t="1"; m="2";;                                     #typing
-		-p)          p="1";;                                            #permasave
-		*) if [ -e "$arg" ]; then file="$arg"; else echo "No such file"; exit; fi;;
-	esac
-done
+# file doesn't exist
+if [ -e "$1" ]; then i="$1"
+else printf '%s\n' "$0: cannot access '$1': No such file"; exit; fi
 
+# parsed arguments
+! (: "${t:?}" ) && t=0 && m="${m:-1}" || m="${m:-2}"; mc="$t" p="${p:-0}"
+
+# for greater enviornment support e.g. termux
+[ "$p" = 1 ] && savefile='tmp-'"${i##*/}" || savefile="${TMPDIR:-/tmp}"'/tmp-'"${i##*/}"
+
+# declare variables if not loaded from a savefile
 declarenew() {
-	card="1"; voc="$(shuf "$file")"; total="$(awk 'END{print NR}' "$file")"; crt="0"
-	if [ "$c" -gt 0 ] && [ "$c" -lt "$total" ]; then total="$c"; fi
+	card=1 crt=0 n=0 voc="$(shuf "$i")" # shuf is here
+	# AFAIK it is not possible to get random/pseudo random numbers in POSIX shell.
+	# if it is somehow possible please let me know.
+	# for now it's shuf. if it is not available change it to 'sort -R' or something else.
+	# in the worst case compile one of the many shuf clones from the web.
+	! (: "${voc:?}" ) && printf "cannot execute shuf! install shuf or replace it in code. sry\n" && exit
+	while read -r line; do n=$((n+1)); done < "$i";	total="${c:-$n}"
 }
 
-if [ "$p" = "1" ]; then
-	savefile="tmp-$file"
-else
-	savefile="$(mktemp -u | awk -F'/' 'BEGIN{OFS=FS} {$NF=""; print}')tmp-$file"
-fi
-
-if [ -e "$savefile" ] && [ "$(awk 'NR==1' "$savefile")" = "$m|$c" ]; then
-	printf '%s'"$(awk 'NR==2' "$savefile")/$(awk 'NR==3' "$savefile")\ncontinue (y) or start a new one (n) "
-	read -r REPLY
-	if [ "$REPLY" = "y" ]; then
-		card="$(awk 'NR==2' "$savefile")"
-		total="$(awk 'NR==3' "$savefile")"
-		crt="$(awk 'NR==4' "$savefile")"
-		voc="$(awk 'NR>=5' "$savefile")"
-	else declarenew; fi
+# parse savefile
+if read -r line < "$savefile" && [ "$line" = "$m|$c" ]; then
+	# load variables from savefile
+	n=1
+	while read -r l; do
+		case "$n" in
+			2) card="$l";; 3) total="$l";; 4) crt="$l";; ??*) voc="$voc
+$l";;
+		esac; n=$((n+1))
+	done < "$savefile"
+	# remove first line of $voc, which is just a newline
+	voc="${voc#*
+}"; printf '%s'"$card/$total\nresume (*) or not (n): "
+	read -r REPLY; [ "$REPLY" = n ] && declarenew
 else declarenew; fi
 
+# print selected page
 printsel() {
-	clear; echo "$card/$total"
-	echo "$voc" | awk -v k="$card" -v m="$m" -F' = ' '{if(NR==k) {print $m}}'
-	read -r REPLY
+	printf '\033[2J\033[H%s'"$card/$total"; [ "$t" -ge 1 ] && printf '%s'" - correct: $crt"
+	x=1 part="$line"
+	while [ "$x" -lt "$m" ]; do
+		[ "$x" -le "$m" ] && part="${part#* = }"; x=$((x+1))
+	done
+	printf '\n%s\n' "${part%% = *}"; read -r REPLY
 }
 
+# print whole card
 printnext() {
-	echo "$voc" | awk -v k="$card" 'NR==k'; read -r REPLY; card="$((card+1))"
-	if [ "$REPLY" = "q" ] && [ "$card" -le "$total" ]; then
-		printf '%s'"$m|$c\n$card\n$total\n$crt\n$voc" > "$savefile"; exit
-	fi
+	printf '\n%s\n' "$line"
+	# delete top line from $voc
+	voc="${voc#*
+}"; read -r REPLY; card=$((card+1))
+	# save and exit if input
+	[ "$REPLY" = q ] && [ "$card" -le "$total" ] &&
+		printf '%s'"$m|$c\n$card\n$total\n$crt\n\n\n\n\n\n$voc\n" > "$savefile" && exit
 }
 
-if [ "$t" = "0" ]; then
+# main loop
+if [ "$t" -ge 1 ]; then # typing check
 	while [ "$card" -le "$total" ]; do
-		if [ "$m" != "0" ]; then printsel; fi
-		clear; echo "$card/$total"; printnext
-	done
-else
-	while [ "$card" -le "$total" ]; do
+		# set line to the top line of $voc
+		line="${voc%%
+*}"
 		printsel
-		if [ "$REPLY" = "$(echo "$voc" | \
-			awk -v k="$card" -v m="1" -F' = ' '{if(NR==k) {print $m}}')" ]; then
-			printf "\ncorrect\n"; crt="$((crt+1))"
-		else printf "incorrect\n"; fi
-		printnext
+		# prepare compare with selected page
+		x=1 part="$line"
+		while [ "$x" -lt "$mc" ]; do
+			[ "$x" -le "$mc" ] && part="${part#* = }"; x=$((x+1))
+		done
+		# compare typed input with page
+		[ "$REPLY" = "${part%% = *}" ] &&
+			# 2 is green, 1 is red
+			printf '\033[9%sm\ncorrect\033[0m' 2 && crt=$((crt+1)) ||
+			printf '\033[9%sm\nincorrect\033[0m' 1; printnext; done
+	printf '\033[2J\033[H%s\n' "correct: $crt/$total or $((200*crt/total%2+100*crt/total))%"
+else # no typing check
+	while [ "$card" -le "$total" ]; do
+		# set line to the top line of $voc
+		line="${voc%%
+*}"
+		[ "$m" -gt 0 ] && printsel
+		printf '\033[2J\033[H%s' "$card/$total"; printnext
 	done
-	clear; echo "correct: $crt/$total"
 fi
 
-if [ -e "$savefile" ]; then rm "$savefile"; fi
+# delete savefile
+[ -e "$savefile" ] && rm "$savefile"
