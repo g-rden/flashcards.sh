@@ -29,5 +29,8 @@ Make the script executable: e.g. `chmod +x flashcards.sh`.
    last line is an empty new line
    
    no other empty or unused lines
+   
 # Dependencies
-   `shuf`
+   `shell` - any POSIX complient shell
+   
+   `shuf` is the only external/non POSIX command
