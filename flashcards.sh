@@ -128,4 +128,4 @@ else # no typing check
 fi
 
 # delete savefile or if not possible empty file
-[ -e "$savefile" ] && rmddd "$savefile" || printf '' > "$savefile"
+[ -e "$savefile" ] && rmddd "$savefile" || printf 'no longer needed. you may delete this file' > "$savefile"
