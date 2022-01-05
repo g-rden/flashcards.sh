@@ -33,4 +33,7 @@ Make the script executable: e.g. `chmod +x flashcards.sh`.
 # Dependencies
    `shell` - any POSIX complient shell
    
-   `shuf` is the only external/non POSIX command
+   `awk` is the only needed non shell, but still POSIX command
+   
+   optional
+   `rm` for deleting temp files
