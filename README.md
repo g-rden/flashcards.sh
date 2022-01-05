@@ -1,5 +1,5 @@
 # flashcards.sh
-A POSIX complient and almost fully POSIX shell flashcards learning script
+A POSIX complient flashcards learning shell script
 
 # Prerequisites
 Make the script executable: e.g. `chmod +x flashcards.sh`.
@@ -35,5 +35,4 @@ Make the script executable: e.g. `chmod +x flashcards.sh`.
    
    `awk` is the only needed non shell, but still POSIX command
    
-   optional
-   `rm` for deleting temp files
+   optional: `rm` for deleting temp files
